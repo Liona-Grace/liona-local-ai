@@ -24,6 +24,10 @@ public:
     QString recognize(const QImage& image);
 
 private:
+    static QImage toGrayscale(const QImage& image);
+    static QImage upscale(const QImage& image, int factor);
+    static QImage increaseContrast(const QImage& image, double factor);
+    static QImage binarize(const QImage& image);
     static QString normalizeText(QString text);
 
     std::unique_ptr<tesseract::TessBaseAPI> api_;

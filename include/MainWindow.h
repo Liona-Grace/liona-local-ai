@@ -30,7 +30,7 @@ protected:
 
 private:
     void restoreAfterSelection();
-    void sendMessage();
+    void sendMessage(const QString& targetLanguage = {});
 
     OllamaConnection ollama_;
     TextRecognizer textRecognizer_;
@@ -39,5 +39,7 @@ private:
     QPlainTextEdit* messageInput_;
     QPushButton* screenSelectionButton_;
     QPushButton* sendButton_;
+    QPushButton* translateVietnameseButton_;
+    QPushButton* translateEnglishButton_;
     QFutureWatcher<SendResult>* sendWatcher_;
 };
