@@ -25,7 +25,11 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 private:
+    void restoreAfterSelection();
     void sendMessage();
 
     OllamaConnection ollama_;

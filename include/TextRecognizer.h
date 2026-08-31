@@ -24,5 +24,7 @@ public:
     QString recognize(const QImage& image);
 
 private:
+    static QString normalizeText(QString text);
+
     std::unique_ptr<tesseract::TessBaseAPI> api_;
 };

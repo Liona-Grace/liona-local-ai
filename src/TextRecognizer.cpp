@@ -1,6 +1,7 @@
 #include "TextRecognizer.h"
 
 #include <QImage>
+#include <QStringList>
 
 #include <tesseract/baseapi.h>
 
@@ -46,5 +47,34 @@ QString TextRecognizer::recognize(const QImage& image)
         throw std::runtime_error("Tesseract returned no recognition result");
     }
 
-    return QString::fromUtf8(recognizedText.get()).trimmed();
+    return normalizeText(QString::fromUtf8(recognizedText.get()));
+}
+
+QString TextRecognizer::normalizeText(QString text)
+{
+    text.replace("\r\n", "\n");
+    text.replace('\r', '\n');
+
+    QStringList paragraphs;
+    QStringList currentParagraph;
+
+    const QStringList lines = text.split('\n');
+    for (const QString& line : lines) {
+        const QString normalizedLine = line.simplified();
+        if (!normalizedLine.isEmpty()) {
+            currentParagraph.append(normalizedLine);
+            continue;
+        }
+
+        if (!currentParagraph.isEmpty()) {
+            paragraphs.append(currentParagraph.join(' '));
+            currentParagraph.clear();
+        }
+    }
+
+    if (!currentParagraph.isEmpty()) {
+        paragraphs.append(currentParagraph.join(' '));
+    }
+
+    return paragraphs.join("\n\n");
 }

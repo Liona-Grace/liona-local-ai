@@ -1,10 +1,13 @@
 #include "MainWindow.h"
 
+#include <QEvent>
 #include <QHBoxLayout>
 #include <QFutureWatcher>
+#include <QKeyEvent>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QtConcurrent>
@@ -13,7 +16,7 @@
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
-    , screenSelector_(new ScreenSelector(this))
+    , screenSelector_(new ScreenSelector())
     , conversationView_(new QPlainTextEdit(this))
     , messageInput_(new QPlainTextEdit(this))
     , screenSelectionButton_(new QPushButton("Screen Selection", this))
@@ -26,6 +29,7 @@ MainWindow::MainWindow(QWidget* parent)
     conversationView_->setReadOnly(true);
     conversationView_->setPlaceholderText("Conversation will appear here...");
     messageInput_->setPlaceholderText("Type a message...");
+    messageInput_->installEventFilter(this);
     screenSelectionButton_->setMinimumWidth(130);
     sendButton_->setMinimumWidth(100);
 
@@ -51,7 +55,10 @@ MainWindow::MainWindow(QWidget* parent)
     });
 
     connect(screenSelectionButton_, &QPushButton::clicked, this, [this] {
-        screenSelector_->startSelection();
+        showMinimized();
+        QTimer::singleShot(250, this, [this] {
+            screenSelector_->startSelection();
+        });
     });
 
     connect(
@@ -59,17 +66,30 @@ MainWindow::MainWindow(QWidget* parent)
         &ScreenSelector::selectionFinished,
         this,
         [this](const QImage& image) {
-            try {
-                messageInput_->setPlainText(textRecognizer_.recognize(image));
-                messageInput_->setFocus();
-            }
-            catch (const std::exception& error) {
-                QMessageBox::warning(
-                    this,
-                    "Text recognition failed",
-                    QString::fromUtf8(error.what())
-                );
-            }
+            restoreAfterSelection();
+
+            QTimer::singleShot(0, this, [this, image] {
+                try {
+                    messageInput_->setPlainText(textRecognizer_.recognize(image));
+                    messageInput_->setFocus();
+                }
+                catch (const std::exception& error) {
+                    QMessageBox::warning(
+                        this,
+                        "Text recognition failed",
+                        QString::fromUtf8(error.what())
+                    );
+                }
+            });
+        }
+    );
+
+    connect(
+        screenSelector_,
+        &ScreenSelector::selectionCanceled,
+        this,
+        [this] {
+            restoreAfterSelection();
         }
     );
 
@@ -92,6 +112,35 @@ MainWindow::~MainWindow()
     if (sendWatcher_->isRunning()) {
         sendWatcher_->waitForFinished();
     }
+    delete screenSelector_;
+}
+
+bool MainWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == messageInput_ && event->type() == QEvent::KeyPress) {
+        auto* keyEvent = static_cast<QKeyEvent*>(event);
+        const bool isEnter = keyEvent->key() == Qt::Key_Return
+            || keyEvent->key() == Qt::Key_Enter;
+
+        if (isEnter && !(keyEvent->modifiers() & Qt::ShiftModifier)) {
+            if (!sendWatcher_->isRunning()) {
+                sendButton_->click();
+            }
+            return true;
+        }
+    }
+
+    return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::restoreAfterSelection()
+{
+    setWindowState(
+        (windowState() & ~Qt::WindowMinimized) | Qt::WindowActive
+    );
+    show();
+    raise();
+    activateWindow();
 }
 
 void MainWindow::sendMessage()
