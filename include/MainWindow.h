@@ -6,16 +6,24 @@
 
 #include <QMainWindow>
 #include <QString>
+#include <QStringList>
 
 template<typename T>
 class QFutureWatcher;
 
+class QComboBox;
 class QPlainTextEdit;
 class QPushButton;
 
 struct SendResult
 {
     QString response;
+    QString error;
+};
+
+struct ModelListResult
+{
+    QStringList models;
     QString error;
 };
 
@@ -33,6 +41,8 @@ private:
     void sendMessage(const QString& targetLanguage = {});
 
     OllamaConnection ollama_;
+    QComboBox* modelSelector_;
+    QFutureWatcher<ModelListResult>* modelsWatcher_;
     TextRecognizer textRecognizer_;
     ScreenSelector* screenSelector_;
     QPlainTextEdit* conversationView_;
